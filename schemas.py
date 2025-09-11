@@ -1,0 +1,15 @@
+from pydantic import BaseModel, EmailStr
+
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str  # plain password, to be hashed
+
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    avatar_url: str
+
+    class Config:
+        from_attributes = True

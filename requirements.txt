@@ -1,0 +1,14 @@
+# Framework web moderno y rápido para APIs REST
+fastapi==0.104.1
+
+# Servidor ASGI para FastAPI (incluye auto-reload en desarrollo)
+uvicorn[standard]==0.24.0
+
+# ORM (Object-Relational Mapping) para Python - gestión de base de datos
+sqlalchemy==2.0.23
+
+# Validación de datos y serialización (con soporte para validación de emails)
+pydantic[email]==2.5.0
+
+# Librería para hashing de contraseñas (bcrypt)
+passlib[bcrypt]==1.7.4
