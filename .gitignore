@@ -132,6 +132,7 @@ dmypy.json
 *.db
 *.sqlite
 *.sqlite3
+keep_bouncing_back.db
 
 # IDE
 .vscode/
@@ -148,3 +149,6 @@ dmypy.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Node.js versions
+v*/
