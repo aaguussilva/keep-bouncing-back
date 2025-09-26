@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from passlib.hash import bcrypt
 import models, schemas
 from database import SessionLocal, engine
 
@@ -29,12 +28,15 @@ def get_db():
 
 @app.post("/users", response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    hashed_password = bcrypt.hash(user.password)
+    # Verificar si el email ya existe
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email ya registrado")
+    
     new_user = models.User(
         name=user.name,
         email=user.email,
-        password_hash=hashed_password,
-        avatar_url="https://example.com/default-avatar.png"
+        password=user.password  # Guardar password simple (sin hash por simplicidad)
     )
     db.add(new_user)
     db.commit()
@@ -53,8 +55,8 @@ def login_user(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Email no encontrado")
     
-    # Verificar password
-    if not bcrypt.verify(login_data.password, user.password_hash):
+    # Verificar password (comparación simple sin hash)
+    if user.password != login_data.password:
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
     
     return {
