@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models, schemas
 from database import SessionLocal, engine
+import json
+from contextlib import asynccontextmanager
 
 
 app = FastAPI()
@@ -18,6 +20,13 @@ app.add_middleware(
 
 models.Base.metadata.create_all(bind=engine)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    seed_tricks()
+    yield
+
+
 # Dependency
 def get_db():
     db = SessionLocal()
@@ -25,6 +34,31 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def seed_tricks():
+    db = next(get_db())
+    try:
+        with open('highline_tricks.json', 'r', encoding='utf-8') as file:
+            tricks_by_level = json.load(file)
+            inserted = 0
+            for level, tricks in tricks_by_level.items():
+                for name in tricks:
+                    if not db.query(models.Trick).filter_by(name=name).first():
+                        db.add(models.Trick(name=name, level=int(level)))
+                        inserted += 1
+            db.commit()
+            print(f"{inserted} trucos insertados correctamente.")
+    except Exception as e:
+        print(f"Error al insertar trucos: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+# Ejecutar seed al iniciar
+seed_tricks()
+
 
 @app.post("/users", response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -63,3 +97,22 @@ def login_user(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
         "message": "Login exitoso",
         "user": user
     }
+
+@app.post("/pegue", response_model=bool)
+def create_pegue(pegue: schemas.PegueCreate, db: Session = Depends(get_db)):
+    new_pegue = models.Pegue(
+        user_id=pegue.user_id,
+        equipment=pegue.equipment,
+        date=pegue.date,
+        duration=pegue.duration,
+        tricks=pegue.tricks,
+        notes=pegue.notes)
+    db.add(new_pegue)
+    db.commit()
+    db.refresh(new_pegue)
+    return True
+
+@app.get("/tricks", response_model=list[schemas.TrickOut])
+def list_tricks(db: Session = Depends(get_db)):
+    return db.query(models.Trick).all()
+

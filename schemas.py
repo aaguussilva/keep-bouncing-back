@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from datetime import datetime
 
 class UserCreate(BaseModel):
     name: str
@@ -20,3 +21,19 @@ class UserLogin(BaseModel):
 class LoginResponse(BaseModel):
     message: str
     user: UserOut
+
+class TrickOut(BaseModel):
+    id: int
+    name: str
+    level: int
+
+    class Config:
+        from_attributes = True
+
+class PegueCreate(BaseModel):
+    user_id: int
+    equipment: str
+    date: datetime
+    duration: int
+    tricks: list[int]
+    notes: str
