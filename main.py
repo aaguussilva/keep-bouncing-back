@@ -100,17 +100,29 @@ def login_user(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
 
 @app.post("/pegue", response_model=bool)
 def create_pegue(pegue: schemas.PegueCreate, db: Session = Depends(get_db)):
+    trick_objects = db.query(models.Trick).filter(models.Trick.id.in_(pegue.tricks_ids)).all()
+
+    if len(trick_objects) != len(pegue.tricks_ids):
+        raise HTTPException(status_code=400, detail="Uno o más trucos no existen")
+
     new_pegue = models.Pegue(
         user_id=pegue.user_id,
         equipment=pegue.equipment,
         date=pegue.date,
         duration=pegue.duration,
-        tricks=pegue.tricks,
-        notes=pegue.notes)
+        notes=pegue.notes
+        )
+
+    new_pegue.tricks = trick_objects
+
     db.add(new_pegue)
     db.commit()
     db.refresh(new_pegue)
     return True
+
+@app.get("/pegues", response_model=list[schemas.PegueOut])
+def list_pegues(db: Session = Depends(get_db)):
+    return db.query(models.Pegue).all()
 
 @app.get("/tricks", response_model=list[schemas.TrickOut])
 def list_tricks(db: Session = Depends(get_db)):

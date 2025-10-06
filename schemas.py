@@ -35,5 +35,19 @@ class PegueCreate(BaseModel):
     equipment: str
     date: datetime
     duration: int
-    tricks: list[int]
+    tricks_ids:  list[int]
     notes: str
+
+class PegueOut(BaseModel):
+    id: int
+    user_id: int
+    equipment: str
+    date: datetime
+    duration: int
+    notes: str
+    tricks: list[TrickOut]
+
+    class Config:
+        from_attributes = True
+
+    
