@@ -26,4 +26,3 @@ app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(pegues.router, prefix="/pegues", tags=["Pegues"])
 app.include_router(tricks.router, prefix="/tricks", tags=["Tricks"])
 app.include_router(equipment.router, prefix="/equipment", tags=["Equipment"])
-

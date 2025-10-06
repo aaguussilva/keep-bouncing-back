@@ -20,6 +20,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     pegues = relationship("Pegue", back_populates="user")
+    equipment = relationship("Equipment", secondary="user_equipment", back_populates="users")
 
 class Pegue(Base):
     __tablename__ = "pegue"
@@ -42,3 +43,22 @@ class Trick(Base):
     level = Column(Integer, nullable=False)
 
     pegues = relationship("Pegue", secondary=pegue_trick_association, back_populates="tricks")
+
+user_equipment = Table(
+    "user_equipment",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("equipment_id", Integer, ForeignKey("equipment.id"), primary_key=True)
+)
+
+class Equipment(Base):
+    __tablename__ = "equipment"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)
+
+    equipment_obj = relationship("Equipment", back_populates="pegues")
+    users = relationship("User", secondary="user_equipment", back_populates="equipment")
+    pegues = relationship("Pegue", back_populates="equipment_obj")
