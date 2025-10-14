@@ -20,3 +20,8 @@ class UserLogin(BaseModel):
 class LoginResponse(BaseModel):
     message: str
     user: UserOut
+
+class UserUpdate(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    password: str | None = None
