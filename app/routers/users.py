@@ -31,7 +31,7 @@ def create_user(user_data: user_schemas.UserCreate, db: Session = Depends(get_db
     db.refresh(new_user)
     return new_user
 
-@router.put("/{user_id}", response_model=user_schemas.UserOut)
+@router.put("/update/{user_id}", response_model=user_schemas.UserOut)
 def update_user(user_id: int, user_data: user_schemas.UserUpdate, db: Session = Depends(get_db)):
     # Buscar el usuario por ID
     db_user = db.query(user.User).filter(user.User.id == user_id).first()
@@ -68,3 +68,13 @@ def login_user(login_data: user_schemas.UserLogin, db: Session = Depends(get_db)
         "message": "Login exitoso",
         "user": user_obj
     }
+
+@router.get("/{user_id}", response_model=user_schemas.UserOut)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    # Buscar el usuario por ID
+    db_user = db.query(user.User).filter(user.User.id == user_id).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    return db_user
