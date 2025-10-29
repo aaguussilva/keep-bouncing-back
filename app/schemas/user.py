@@ -24,4 +24,5 @@ class LoginResponse(BaseModel):
 class UserUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
-    password: str | None = None
+    currentPassword: str | None = None
+    newPassword: str | None = None
