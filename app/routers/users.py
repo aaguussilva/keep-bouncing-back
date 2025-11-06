@@ -92,7 +92,12 @@ def login_user(login_data: user_schemas.UserLogin, db: Session = Depends(get_db)
     }
 
 @router.get("/{user_id}", response_model=user_schemas.UserOut)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(user_id: int, db: Session = Depends(get_db),
+             current_user: user.User = Depends(auth.get_current_user)):
+    # Solo el dueño puede acceder a su información
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
     # Buscar el usuario por ID
     db_user = db.query(user.User).filter(user.User.id == user_id).first()
 
