@@ -20,6 +20,7 @@ class UserLogin(BaseModel):
 class LoginResponse(BaseModel):
     message: str
     user: UserOut
+    token: str
 
 class UserUpdate(BaseModel):
     name: str | None = None

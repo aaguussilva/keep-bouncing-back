@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import user
 from app.schemas import user as user_schemas
+from app import auth 
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ def create_user(user_data: user_schemas.UserCreate, db: Session = Depends(get_db
     new_user = user.User(
         name=user_data.name,
         email=user_data.email,
-        password=user_data.password  # Guardar password simple (sin hash por simplicidad)
+        password=auth.hash_password(user_data.password)  # <-- almacenar hasheada
     )
     db.add(new_user)
     db.commit()
@@ -32,7 +33,13 @@ def create_user(user_data: user_schemas.UserCreate, db: Session = Depends(get_db
     return new_user
 
 @router.put("/update/{user_id}", response_model=user_schemas.UserOut)
-def update_user(user_id: int, user_data: user_schemas.UserUpdate, db: Session = Depends(get_db)):
+def update_user(user_id: int, user_data: user_schemas.UserUpdate, 
+                db: Session = Depends(get_db),
+                current_user: user.User = Depends(auth.get_current_user)):
+    # Sólo el dueño puede actualizar su cuenta
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
     db_user = db.query(user.User).filter(user.User.id == user_id).first()
 
     if not db_user:
@@ -43,11 +50,10 @@ def update_user(user_id: int, user_data: user_schemas.UserUpdate, db: Session = 
         if not user_data.currentPassword:
             raise HTTPException(status_code=400, detail="Debes ingresar la contraseña actual para cambiarla")
 
-        if db_user.password != user_data.currentPassword:
+        if not auth.verify_password(user_data.currentPassword, db_user.password):
             raise HTTPException(status_code=401, detail="La contraseña actual no es correcta")
 
-        # Actualizar contraseña
-        db_user.password = user_data.newPassword
+        db_user.password = auth.hash_password(user_data.newPassword)
 
     # Actualizar otros campos
     if user_data.name:
@@ -72,17 +78,26 @@ def login_user(login_data: user_schemas.UserLogin, db: Session = Depends(get_db)
     if not user_obj:
         raise HTTPException(status_code=401, detail="Email no encontrado")
     
-    # Verificar password (comparación simple sin hash)
-    if user_obj.password != login_data.password:
+    # Verificar password hasheado
+    if not auth.verify_password(login_data.password, user_obj.password):
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+
+    # Crear token JWT (sub = id)
+    access_token = auth.create_access_token(subject=str(user_obj.id))
     
     return {
         "message": "Login exitoso",
-        "user": user_obj
+        "user": user_obj,
+        "token": access_token
     }
 
 @router.get("/{user_id}", response_model=user_schemas.UserOut)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(user_id: int, db: Session = Depends(get_db),
+             current_user: user.User = Depends(auth.get_current_user)):
+    # Solo el dueño puede acceder a su información
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    
     # Buscar el usuario por ID
     db_user = db.query(user.User).filter(user.User.id == user_id).first()
 
