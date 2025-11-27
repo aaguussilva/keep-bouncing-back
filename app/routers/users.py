@@ -33,16 +33,28 @@ def create_user(user_data: user_schemas.UserCreate, db: Session = Depends(get_db
 
 @router.put("/update/{user_id}", response_model=user_schemas.UserOut)
 def update_user(user_id: int, user_data: user_schemas.UserUpdate, db: Session = Depends(get_db)):
-    # Buscar el usuario por ID
     db_user = db.query(user.User).filter(user.User.id == user_id).first()
 
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Actualizar solo los campos enviados
-    update_data = user_data.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_user, key, value)
+    # Validar contraseña actual si se quiere cambiar
+    if user_data.newPassword:
+        if not user_data.currentPassword:
+            raise HTTPException(status_code=400, detail="Debes ingresar la contraseña actual para cambiarla")
+
+        if db_user.password != user_data.currentPassword:
+            raise HTTPException(status_code=401, detail="La contraseña actual no es correcta")
+
+        # Actualizar contraseña
+        db_user.password = user_data.newPassword
+
+    # Actualizar otros campos
+    if user_data.name:
+        db_user.name = user_data.name
+
+    if user_data.email:
+        db_user.email = user_data.email
 
     db.commit()
     db.refresh(db_user)
