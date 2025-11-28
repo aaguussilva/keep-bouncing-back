@@ -190,3 +190,54 @@ class TestCreateUser:
 
             assert exc_info.value.status_code == 400
             assert "Invalid name" in str(exc_info.value.detail)
+
+
+def test_delete_user_success(db_session):
+    """Owner can delete their account successfully."""
+    from app.routers.users import delete_user
+
+    user_obj = user_model.User(name="ToDelete", email="del@example.com", password="h")
+    db_session.add(user_obj)
+    db_session.commit()
+    db_session.refresh(user_obj)
+
+    resp = delete_user(user_obj.id, db_session, user_obj)
+    assert isinstance(resp, dict)
+    assert resp.get("detail") == "User deleted"
+
+    # Ensure the user is really deleted
+    assert db_session.query(user_model.User).filter(user_model.User.id == user_obj.id).first() is None
+
+
+def test_delete_user_unauthorized(db_session):
+    """A different authenticated user cannot delete another user's account."""
+    from app.routers.users import delete_user
+
+    owner = user_model.User(name="Owner", email="owner@example.com", password="h")
+    other = user_model.User(name="Other", email="other@example.com", password="h")
+    db_session.add_all([owner, other])
+    db_session.commit()
+    db_session.refresh(owner)
+    db_session.refresh(other)
+
+    with pytest.raises(HTTPException) as exc:
+        delete_user(owner.id, db_session, other)
+
+    assert exc.value.status_code == 403
+    assert exc.value.detail == "Not authorized"
+
+
+def test_delete_user_not_found(db_session):
+    """Attempting to delete a non-existent user returns 404."""
+    from app.routers.users import delete_user
+
+    # Simulate an authenticated user whose id matches the requested id, but the DB has no record.
+    non_existing_id = 999999
+    fake_current_user = user_model.User()
+    fake_current_user.id = non_existing_id
+
+    with pytest.raises(HTTPException) as exc:
+        delete_user(non_existing_id, db_session, fake_current_user)
+
+    assert exc.value.status_code == 404
+    assert exc.value.detail == "User not found"

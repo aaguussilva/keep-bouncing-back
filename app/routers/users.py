@@ -125,3 +125,19 @@ def get_user(user_id: int, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     return db_user
+
+
+@router.delete("/{user_id}")
+def delete_user(user_id: int,db: Session = Depends(get_db),
+                current_user: user.User = Depends(auth.get_current_user)):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_user = db.query(user.User).filter(user.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    db.delete(db_user)
+    db.commit()
+
+    return {"detail": "User deleted"}
