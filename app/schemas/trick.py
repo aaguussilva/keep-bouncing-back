@@ -1,9 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class TrickOut(BaseModel):
     id: int
     name: str
     level: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

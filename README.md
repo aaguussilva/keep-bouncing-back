@@ -65,3 +65,14 @@ pip install pymysql
 ```
 
 
+## 🧪 Ejecutar tests
+
+Para ejecutar la suite de pruebas (desde la raíz del proyecto y con el entorno virtual activado):
+
+```bash
+python -m pytest tests/
+```
+
+Opcionales útiles:
+- `-q` — salida más compacta
+- `-v` — salida detallada

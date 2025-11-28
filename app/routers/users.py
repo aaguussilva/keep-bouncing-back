@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+import re
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import user
@@ -17,15 +18,34 @@ def get_db():
 
 @router.post("/", response_model=user_schemas.UserOut)
 def create_user(user_data: user_schemas.UserCreate, db: Session = Depends(get_db)):
-    # Verificar si el email ya existe
-    existing_user = db.query(user.User).filter(user.User.email == user_data.email).first()
+    email_normalized = user_data.email.strip().lower()
+    name_clean = user_data.name.strip()
+    password = user_data.password
+
+    if not name_clean or len(name_clean) < 3 or len(name_clean) > 50:
+        raise HTTPException(status_code=400, detail="Invalid name (must be between 3 and 50 characters)")
+
+    # Allow letters (including common accented latin letters), spaces, apostrophes and hyphens only
+    # Disallow other special characters
+    name_pattern = r"^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]+$"
+    if not re.match(name_pattern, name_clean):
+        raise HTTPException(status_code=400, detail="Invalid name: only letters, spaces, hyphens and apostrophes are allowed")
+
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password too short (minimum 8 characters)")
+
+    MAX_PASSWORD_LENGTH = 128
+    if len(password) > MAX_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password too long (max {MAX_PASSWORD_LENGTH} characters)")
+
+    existing_user = db.query(user.User).filter(user.User.email == email_normalized).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email ya registrado")
-    
+        raise HTTPException(status_code=400, detail="Email already registered")
+
     new_user = user.User(
-        name=user_data.name,
-        email=user_data.email,
-        password=auth.hash_password(user_data.password)  # <-- almacenar hasheada
+        name=name_clean,
+        email=email_normalized,
+        password=auth.hash_password(password)  
     )
     db.add(new_user)
     db.commit()

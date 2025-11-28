@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from app.schemas.trick import TrickOut
 
@@ -19,5 +19,4 @@ class PegueOut(BaseModel):
     notes: str
     tricks: list[TrickOut]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
