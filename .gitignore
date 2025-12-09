@@ -152,3 +152,6 @@ Thumbs.db
 
 # Node.js versions
 v*/
+
+#config
+config.py
