@@ -241,3 +241,122 @@ def test_delete_user_not_found(db_session):
 
     assert exc.value.status_code == 404
     assert exc.value.detail == "User not found"
+
+
+class TestLoginUser:
+    """Test cases for the login_user function"""
+
+    def test_login_success(self, db_session):
+        """Test successful login with correct credentials"""
+        from app.routers.users import login_user
+        from app.schemas.user import UserLogin
+        from app.auth import hash_password
+        
+        # Create a test user with hashed password
+        test_user = user_model.User(
+            name="Test User",
+            email="test@example.com",
+            password=hash_password("password123")  # Hash the password properly
+        )
+        db_session.add(test_user)
+        db_session.commit()
+
+        # Test login
+        login_data = UserLogin(email="test@example.com", password="password123")
+        
+        with patch('app.routers.users.auth.create_access_token') as mock_token:
+            mock_token.return_value = "test_token"
+            
+            response = login_user(login_data, db_session)
+            
+            assert response["message"] == "Login exitoso"
+            assert response["user"].email == "test@example.com"
+            assert response["token"] == "test_token"
+            mock_token.assert_called_once_with(subject=str(test_user.id))
+
+    def test_login_user_not_found(self, db_session):
+        """Test login with non-existent email"""
+        from app.routers.users import login_user
+        from app.schemas.user import UserLogin
+        
+        login_data = UserLogin(email="nonexistent@example.com", password="password123")
+        
+        with pytest.raises(HTTPException) as exc_info:
+            login_user(login_data, db_session)
+            
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Email no encontrado"
+
+    def test_login_incorrect_password(self, db_session):
+        """Test login with incorrect password"""
+        from app.routers.users import login_user
+        from app.schemas.user import UserLogin
+        from app.auth import hash_password
+        
+        # Create a test user with hashed password
+        test_user = user_model.User(
+            name="Test User",
+            email="test@example.com",
+            password=hash_password("password123")  # Hash the password properly
+        )
+        db_session.add(test_user)
+        db_session.commit()
+
+        # Test login with wrong password
+        login_data = UserLogin(email="test@example.com", password="wrongpassword")
+        
+        with pytest.raises(HTTPException) as exc_info:
+            login_user(login_data, db_session)
+            
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail == "Contraseña incorrecta"
+
+    def test_login_case_insensitive_email(self, db_session):
+        """Test login with different email case should work"""
+        from app.routers.users import login_user
+        from app.schemas.user import UserLogin
+        from app.auth import hash_password
+        
+        # Create a test user with hashed password and lowercase email
+        test_user = user_model.User(
+            name="Test User",
+            email="test@example.com",
+            password=hash_password("password123")
+        )
+        db_session.add(test_user)
+        db_session.commit()
+
+        # Test login with uppercase email
+        login_data = UserLogin(email="TEST@example.com", password="password123")
+        
+        # Create a mock for the query result
+        mock_query = MagicMock()
+        mock_query.filter.return_value.first.return_value = test_user
+        
+        # Create a mock for the session
+        mock_session = MagicMock()
+        mock_session.query.return_value = mock_query
+        
+        # Patch the get_db dependency to return our mock session
+        with patch('app.routers.users.get_db', return_value=mock_session), \
+            patch('app.routers.users.auth.create_access_token') as mock_token:
+            
+            mock_token.return_value = "test_token"
+            
+            # Call the login function with our mock session
+            response = login_user(login_data, mock_session)
+            
+            # Verify the query was called with the normalized email
+            mock_session.query.assert_called_once_with(user_model.User)
+            mock_query.filter.assert_called_once()
+            
+            # Get the filter condition that was used
+            filter_call = mock_query.filter.call_args[0][0]
+            
+            # Verify the filter is using ilike with the normalized email
+            assert str(filter_call).lower() == "lower(users.email) like lower(:email_1)".lower()
+            
+            # Verify the response
+            assert response["message"] == "Login exitoso"
+            assert response["user"].email == "test@example.com"  # Normalized email
+            assert response["token"] == "test_token"

@@ -92,8 +92,13 @@ def list_users(db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=user_schemas.LoginResponse)
 def login_user(login_data: user_schemas.UserLogin, db: Session = Depends(get_db)):
-    # Buscar usuario por email
-    user_obj = db.query(user.User).filter(user.User.email == login_data.email).first()
+    # Normalize email (convert to lowercase)
+    normalized_email = login_data.email.strip().lower()
+    
+    # Buscar usuario por email (case-insensitive)
+    user_obj = db.query(user.User).filter(
+        user.User.email.ilike(normalized_email)
+    ).first()
     
     if not user_obj:
         raise HTTPException(status_code=401, detail="Email no encontrado")
